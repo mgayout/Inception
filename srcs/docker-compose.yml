@@ -1,60 +1,65 @@
-#version: "3.5"
-
-networks:
-  app-network:
-    name: app-network
-    driver: bridge
-
-volumes:
-  wp:
-    driver: local
-    name: wp
-    driver_opts:
-      type: none
-      o: bind
-      device: /$HOME/data/wordpress
-  db:
-    driver: local
-    name: db
-    driver_opts:
-      type: none
-      o: bind
-      device: /$HOME/data/mariadb
-
 services:
   mariadb:
     container_name: mariadb
-    build: ./requirements/mariadb
-    env_file:
-      - .env
-    volumes:
-      - db:/var/lib/mysql
     networks:
-      - app-network
-    restart: unless-stopped
-
-  wordpress:
-    container_name: wordpress
-    build: ./requirements/wordpress
-    env_file:
-      - .env
-    depends_on:
-      - mariadb
+      - inception
+    build:
+      context: requirements/mariadb
+      dockerfile: Dockerfile
+    env_file: .env
     volumes:
-      - wp:/var/www/html
-    networks:
-      - app-network
+      - mariadb:/var/lib/mysql
     restart: unless-stopped
+    expose:
+      - "3306"
 
   nginx:
     container_name: nginx
-    build: ./requirements/nginx
-    ports:
-      - "443:443"
+    volumes:
+      - wordpress:/var/www/wordpress
+    networks:
+      - inception
     depends_on:
       - wordpress
+    build:
+      context: requirements/nginx
+      dockerfile: Dockerfile
+    env_file : .env
+    ports:
+      - "443:443"
+    restart: on-failure
+
+  wordpress:
+    container_name: wordpress
+    env_file: .env
     volumes:
-      - wp:/var/www/html
+      - wordpress:/var/www/wordpress
     networks:
-      - app-network
-    restart: unless-stopped
+      - inception
+    build:
+      context: requirements/wordpress
+      dockerfile: Dockerfile
+    depends_on:
+      - mariadb
+    restart: on-failure
+    expose:
+      - "9000"
+
+volumes:
+  wordpress:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: /home/maxime/Inception/volumes/wordpress
+  mariadb:
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: /home/maxime/Inception/volumes/mariadb
+
+networks:
+  inception:
+    driver: bridge
+

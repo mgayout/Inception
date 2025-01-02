@@ -10,15 +10,20 @@
 #                                                                              #
 # **************************************************************************** #
 
-all : up
+all :
+	mkdir -p volumes/mariadb
+	mkdir -p volumes/wordpress
+	chmod 777 volumes volumes/mariadb volumes/wordpress
+	cd srcs && docker-compose up --build
 
-up :
-	@docker-compose -f ./srcs/docker-compose.yml up -d
-down :
-	@docker-compose -f ./srcs/docker-compose.yml down
-stop :
-	@docker-compose -f ./srcs/docker-compose.yml stop
-start :
-	@docker-compose -f ./srcs/docker-compose.yml start
-status :
-	@docker ps
+clean :
+	cd srcs && docker-compose down
+	sudo rm -rf volumes/mariadb volumes/wordpress volumes
+
+fclean : clean
+	docker system prune -a -f --volumes
+	docker network prune -f
+	docker network rm $$(docker network ls -q) 2>/dev/null || true
+	docker volume rm $$(docker volume ls -qf dangling=true) 2>/dev/null || true
+
+re : fclean all
