@@ -10,20 +10,32 @@
 #                                                                              #
 # **************************************************************************** #
 
+VOLPATH		= /home/mgayout/data
+DOCKPATH	= ./srcs/docker-compose.yml
+
 all :
-	mkdir -p volumes/mariadb
-	mkdir -p volumes/wordpress
-	chmod 777 volumes volumes/mariadb volumes/wordpress
-	cd srcs && docker-compose up --build
+	@sudo mkdir -p $(VOLPATH)/mariadb
+	@sudo mkdir -p $(VOLPATH)/wordpress
+	@sudo chmod 777 $(VOLPATH)/mariadb
+	@sudo chmod 777 $(VOLPATH)/wordpress
+	@sudo docker compose -f $(DOCKPATH) up -d
+
+down :
+	@docker compose -f $(DOCKPATH) down -v
+
+re :
+	@docker compose -f $(DOCKPATH) up -d --build
+
+clear :
+	@sudo rm -rf $(VOLPATH)/mariadb
+	@sudo rm -rf $(VOLPATH)/wordpress
+	@sudo docker system prune -a --volumes
+	@sudo docker volume rm srcs_mariadb
+	@sudo docker volume rm srcs_wordpress
 
 clean :
-	cd srcs && docker-compose down
-	sudo rm -rf volumes/mariadb volumes/wordpress volumes
-
-fclean : clean
-	docker system prune -a -f --volumes
-	docker network prune -f
-	docker network rm $$(docker network ls -q) 2>/dev/null || true
-	docker volume rm $$(docker volume ls -qf dangling=true) 2>/dev/null || true
-
-re : fclean all
+	@sudo docker stop $$(docker ps -qa)
+	@sudo docker rm $$(docker ps -qa)
+	@sudo docker network prune -f
+	@sudo docker rmi $(docker images -q)
+	

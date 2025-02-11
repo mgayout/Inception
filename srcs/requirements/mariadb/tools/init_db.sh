@@ -1,13 +1,29 @@
 #!/bin/bash
 
-service mysql start
+chown -R mysql:mysql /var/lib/mysql
 
-mysql -e "CREATE DATABASE IF NOT EXISTS \`${SQL_DATABASE}\`;"
-mysql -e "CREATE USER IF NOT EXISTS \`${SQL_USER}\`@'localhost' IDENTIFIED BY '${SQL_PASSWORD}';"
-mysql -e "GRANT ALL PRIVILEGES ON \`${SQL_DATABASE}\`.* TO \`${SQL_USER}\`@'%' IDENTIFIED BY '${SQL_PASSWORD}';"
-mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${SQL_ROOT_PASSWORD}';"
-mysql -e "FLUSH PRIVILEGES;"
+mysql_install_db --user=mysql --datadir=/var/lib/mysql >> /dev/null
+/usr/bin/mysqld_safe --datadir=/var/lib/mysql &
 
-mysqladmin -u root -p$SQL_ROOT_PASSWORD shutdown
+while true; do
+    if /usr/bin/mysqladmin ping --silent; then
+        echo "MySQL is online"
+        break
+    fi
+    sleep 1
+done
 
-exec mysqld_safe
+if [ -n "$DB_NAME" ]; then
+    echo "Checking if $DB_NAME already exists"
+    mysql -u root -e "CREATE DATABASE IF NOT EXISTS $DB_NAME;"
+    if [ -n "$DB_USER" ] && [ -n "$DB_PASSWORD" ]; then
+        echo "Checking if $DB_USER already exists..."
+        mysql -u root -e "CREATE USER IF NOT EXISTS \`${DB_USER}\`@'%' IDENTIFIED BY '${DB_PASSWORD}';"
+        echo "Granting privileges to $DB_USER on $DB_NAME"
+        mysql -u root -e "GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
+        echo "Flushing privileges..."
+        mysql -u root -e "FLUSH PRIVILEGES;"
+    fi
+fi
+
+wait

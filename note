@@ -1,2 +1,0 @@
-build : docker build -t "name" .
-run : docker run -it "name"

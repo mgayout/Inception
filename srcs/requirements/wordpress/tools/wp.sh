@@ -1,126 +1,30 @@
-#!/bin/sh
+#!/bin/bash
 
-sleep 8
+cp /var/www/wordpress/wp-config-sample.php /var/www/wordpress/wp-config.php
 
-if [ ! -e /var/www/wordpress/wp-config.php ]; then
-
-cat << EOF > /var/www/wordpress/wp-config.php
-<?php
-/**
- * La configuration de base de votre installation WordPress.
- *
- * Ce fichier est utilisé par le script de création de wp-config.php pendant
- * le processus d'installation. Vous n'avez pas à utiliser le site web, vous
- * pouvez simplement renommer ce fichier en « wp-config.php » et remplir les
- * valeurs.
- *
- * Ce fichier contient les réglages de configuration suivants :
- *
- * Réglages MySQL
- * Préfixe de table
- * Clés secrètes
- * Langue utilisée
- * ABSPATH
- *
- * @link https://fr.wordpress.org/support/article/editing-wp-config-php/.
- *
- * @package WordPress
- */
-
-// ** Réglages MySQL - Votre hébergeur doit vous fournir ces informations. ** //
-/** Nom de la base de données de WordPress. */
-define( 'DB_NAME', '${SQL_DATABASE}' );
-
-/** Utilisateur de la base de données MySQL. */
-define( 'DB_USER', '${SQL_USER}' );
-
-/** Mot de passe de la base de données MySQL. */
-define( 'DB_PASSWORD', '${SQL_PASSWORD}' );
-
-/** Adresse de l'hébergement MySQL. */
-define( 'DB_HOST', 'mariadb' );
-
-/** Jeu de caractères à utiliser par la base de données lors de la création des tables. */
-define( 'DB_CHARSET', 'utf8' );
-
-/**
- * Type de collation de la base de données.
- * N'y touchez que si vous savez ce que vous faites.
- */
-define( 'DB_COLLATE', '' );
-
-/**#@+
- * Clés uniques d'authentification et salage.
- *
- * Remplacez les valeurs par défaut par des phrases uniques !
- * Vous pouvez générer des phrases aléatoires en utilisant
- * {@link https://api.wordpress.org/secret-key/1.1/salt/ le service de clés secrètes de WordPress.org}.
- * Vous pouvez modifier ces phrases à n'importe quel moment, afin d'invalider tous les cookies existants.
- * Cela forcera également tous les utilisateurs à se reconnecter.
- *
- * @since 2.6.0
- */
-define( 'AUTH_KEY',         'mettez une phrase unique ici' );
-define( 'SECURE_AUTH_KEY',  'mettez une phrase unique ici' );
-define( 'LOGGED_IN_KEY',    'mettez une phrase unique ici' );
-define( 'NONCE_KEY',        'mettez une phrase unique ici' );
-define( 'AUTH_SALT',        'mettez une phrase unique ici' );
-define( 'SECURE_AUTH_SALT', 'mettez une phrase unique ici' );
-define( 'LOGGED_IN_SALT',   'mettez une phrase unique ici' );
-define( 'NONCE_SALT',       'mettez une phrase unique ici' );
-/**#@-*/
-
-/**
- * Préfixe de base de données pour les tables de WordPress.
- *
- * Vous pouvez installer plusieurs WordPress sur une seule base de données
- * si vous leur donnez chacune un préfixe unique.
- * N'utilisez que des chiffres, des lettres non-accentuées, et des caractères soulignés !
- */
-\$table_prefix = 'wp_';
-
-/**
- * Pour les développeurs : le mode déboguage de WordPress.
- *
- * En passant la valeur suivante à "true", vous activez l'affichage des
- * notifications d'erreurs pendant vos essais.
- * Il est fortement recommandé que les développeurs d'extensions et
- * de thèmes se servent de WP_DEBUG dans leur environnement de
- * développement.
- *
- * Pour plus d'information sur les autres constantes qui peuvent être utilisées
- * pour le déboguage, rendez-vous sur le Codex.
- *
- * @link https://fr.wordpress.org/support/article/debugging-in-wordpress/
- */
-define( 'WP_DEBUG', false );
-
-/* C'est tout, ne touchez pas à ce qui suit ! Bonne publication. */
-
-/** Chemin absolu vers le dossier de WordPress. */
-if ( ! defined( 'ABSPATH' ) )
-  define( 'ABSPATH', dirname( __FILE__ ) . '/' );
-
-/** Réglage des variables de WordPress et de ses fichiers inclus. */
-require_once( ABSPATH . 'wp-settings.php' );
-EOF
-
-if [ -f /var/www/wordpress/wp-config.php ]; then
-    echo "wp-config.php has been created."
-else
-    echo "Failed wp-config.php."
-    exit 1
+if [ -n "$DB_NAME" ]; then
+	sed -i "s|define( 'DB_NAME', 'votre_nom_de_bdd' );|define( 'DB_NAME', '$DB_NAME' );|" /var/www/wordpress/wp-config.php
+	if [ -n "$DB_USER" ]; then
+		sed -i "s|define( 'DB_USER', 'votre_utilisateur_de_bdd' );|define( 'DB_USER', '$DB_USER' );|" /var/www/wordpress/wp-config.php
+		if [ -n "$DB_PASSWORD" ]; then
+    		sed -i "s|define( 'DB_PASSWORD', 'votre_mdp_de_bdd' );|define( 'DB_PASSWORD', '$DB_PASSWORD' );|" /var/www/wordpress/wp-config.php
+		fi
+	fi
 fi
 
-sleep 2
+sed -i "s/define( 'DB_HOST', 'localhost' );/define( 'DB_HOST', 'mariadb' );/" /var/www/wordpress/wp-config.php
 
-wp core install --url="${URL}" --title="${AD_Title}" --admin_user="${AD_USER}" --admin_password="${AD_PASS}" --admin_email="${AD_MAIL}" --allow-root --path=/var/www/wordpress
-wp user create --allow-root --role=editor $US_LOG $US_MAIL --user_pass="${US_PASS}" --path=/var/www/wordpress
+until wp db check --allow-root --path=/var/www/wordpress; do
+    sleep 5
+    echo "Retrying..."
+done
 
-fi
+wp core install --allow-root --path=$WP_PATHWORDPRESS --url=$DOMAIN --title=$WP_TITLE --admin_user=$WP_ADMINUSER --admin_password=$WP_ADMINPASSWORD --admin_email=$WP_ADMINEMAIL
 
-if [ ! -d /run/php ]; then
-    mkdir -p /run/php
-fi
+wp user create --allow-root $WP_USER $WP_USEREMAIL --path=$WP_PATHWORDPRESS --role=$WP_ROLE --user_pass=$WP_USERPASSWORD --display_name=$WP_DISPLAYNAME
 
-/usr/sbin/php-fpm7.3 -F
+
+wp option update home "http://localhost" --path=/var/www/wordpress --allow-root
+wp option update siteurl "http://localhost" --path=/var/www/wordpress --allow-root
+
+/usr/sbin/php-fpm7.4 -F
