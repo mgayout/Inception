@@ -21,7 +21,7 @@ all :
 	@sudo docker compose -f $(DOCKPATH) up -d
 
 clean :
-	@sudo docker compose down
+	@sudo docker compose -f ./srcs/docker-compose.yml down -v
 	@sudo rm -rf $(VOLPATH)/mariadb
 	@sudo rm -rf $(VOLPATH)/wordpress
 
