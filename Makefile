@@ -20,22 +20,13 @@ all :
 	@sudo chmod 777 $(VOLPATH)/wordpress
 	@sudo docker compose -f $(DOCKPATH) up -d
 
-down :
-	@docker compose -f $(DOCKPATH) down -v
-
-re :
-	@docker compose -f $(DOCKPATH) up -d --build
-
-clear :
+clean :
+	@sudo docker compose down
 	@sudo rm -rf $(VOLPATH)/mariadb
 	@sudo rm -rf $(VOLPATH)/wordpress
-	@sudo docker system prune -a --volumes
-	@sudo docker volume rm srcs_mariadb
-	@sudo docker volume rm srcs_wordpress
 
-clean :
-	@sudo docker stop $$(docker ps -qa)
-	@sudo docker rm $$(docker ps -qa)
+fclean : clean
+	@sudo docker system prune -a -f --volumes
 	@sudo docker network prune -f
-	@sudo docker rmi $(docker images -q)
-	
+
+re : fclean all
